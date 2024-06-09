@@ -55,9 +55,9 @@ class Animal(GameObject):
     def update(self):
         self.pos = self.pos[0]+self.dx, self.pos[1]+self.dy
         rect = self.image.get_rect()
-        if self.pos[0] + rect.width//2 > width:
+        if self.pos[0] + rect.width//2 > width and self.dx > 0:
             self.dx = -abs(self.dx)
-        elif self.pos[0] - rect.width//2 < 0:
+        elif self.pos[0] - rect.width//2 < 0 and self.dx < 0:
             self.dx = abs(self.dx)
 
     def draw_on(self, screen):
@@ -108,7 +108,7 @@ class Mouse(Animal):
 
 
 class Cat(Animal):
-    cat_image = pygame.image.load('images/cat1.png')
+    cat_image = pygame.image.load('images/casper.png')
     rect = cat_image.get_rect()
     scale = width/(15*rect.width)
     cat_image = pygame.transform.smoothscale(cat_image, (int(rect.width*scale), int(rect.height*scale)))
@@ -131,11 +131,15 @@ class MyGame(object):
         self.height = 1080
         self.screen = pygame.display.set_mode((self.width, self.height))
 
+        self.state = 0
+
         # Setup any internal variables and load any resources
         self.bg_color = 200, 200, 255
 
         # Create a cat
         self.cat = Cat((self.width//2, self.height))
+
+        self.kill_count = 0
 
         # Load sound effects
         self.splat_sound = pygame.mixer.Sound('sounds/splat.wav')
@@ -175,8 +179,14 @@ class MyGame(object):
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_LSHIFT:
                     if self.cat.dy == 0:
                         self.cat.dy = -30
-            # time to draw a new frame
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                self.cat.dx = 0
+                self.cat.dy = 0
+                self.cat.pos = (self.width//2, self.height)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                self.state = 1-self.state
             elif event.type == self.REFRESH:
+                # time to draw a new frame
                 self.update()
                 self.draw()
 
@@ -184,6 +194,8 @@ class MyGame(object):
                 pass # an event type we don't handle
 
     def update(self):
+        if self.state == 1:   # game is paused
+            return
         # Check for left/right cat movement
         if pygame.key.get_pressed()[pygame.K_LEFT]:
             self.cat.dx = -10
@@ -216,6 +228,8 @@ class MyGame(object):
                 rotten.append(mouse)
             elif mouse.afterdeath < 0 and distance(self.cat.pos, mouse.pos) < 30:
                 mouse.kill()
+                self.kill_count += 1
+                print("kill_count={}".format(self.kill_count))
                 self.splat_sound.play()
 
         for mouse in rotten:
@@ -229,6 +243,11 @@ class MyGame(object):
 
         for obj in itertools.chain(self.portals, self.platforms, self.mice, [self.cat]):
             obj.draw_on(self.screen)
+
+        fnt = pygame.font.Font(pygame.font.get_default_font(), 36)
+        txt = "{}".format(self.kill_count)
+        score = fnt.render(txt, True, pygame.Color("blueviolet"))
+        self.screen.blit(score, (self.screen.get_width()-score.get_width()-10,10))
 
         # flip buffers so that everything we have drawn gets displayed
         pygame.display.flip()
